@@ -1,0 +1,39 @@
+fn init(
+        init: Self::Init,
+        root: &Self::Root,
+        sender: ComponentSender<Self>,
+    ) -> ComponentParts<Self> {
+        println!("initializing display");
+        let model = Self { screen: init };
+        let screen = Grid::builder().orientation(Orientation::Vertical).build();
+        // root.set_child(Some(&screen));
+        for i in 0..128 {
+            for j in 0..32 {
+                let pixel = Box::builder().width_request(5).height_request(5).build();
+
+                if model.screen[i][j] == 1 {
+                    pixel.inline_css("background-color: #73EB65");
+                };
+                screen.attach(&pixel, j as i32 * 5, i as i32 * 5, 5, 5);
+            }
+        }
+
+        let widgets = Self::Widgets { screen };
+        ComponentParts { model, widgets }
+    }
+
+    fn update_view(&self, widgets: &mut Self::Widgets, sender: ComponentSender<Self>) {
+        for y in 0..128 {
+            for x in 0..32 {
+                let pixel = widgets
+                    .screen
+                    .child_at(x * 5, y * 5)
+                    .expect(format!("invalid pixel coordinates (x: {}, y{})", x, y,).as_str());
+                if self.screen[y as usize][x as usize] == 1 {
+                    pixel.inline_css("background-color: #73EB65");
+                } else {
+                    pixel.inline_css("background-color: black");
+                }
+            }
+        }
+    }
