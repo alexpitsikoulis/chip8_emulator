@@ -122,23 +122,39 @@ impl CPU {
                     self.rnd(x, kk);
                 }
                 0xD000..=0xDFFF => self.drw(n, x, y, memory, display, sender),
-                0xE09E..=0xEFA1 => match kk {
-                    0x9E => { /* skip if key stored in Vx is pressed */ }
-                    0xA1 => { /* skip if key stored in Vx is NOT pressed */ }
-                    _ => { /* invalid */ }
-                },
+                0xE09E..=0xEFA1 => {
+                    match kk {
+                        0x9E => { /* skip if key stored in x is pressed */ }
+                        0xA1 => { /* skip if key stored in x is NOT pressed */ }
+                        _ => { /* invalid */ }
+                    };
+                }
                 0xF007..=0xFF65 => match kk {
-                    0x07 => { /* set Vx = delay timer */ }
-                    0x0A => { /* wait for key press then store value of key in Vx */ }
-                    0x15 => { /* set delay timer = Vx */ }
-                    0x18 => { /* set sound timer = Vx */ }
-                    0x1E => { /* set I = I + Vx */ }
-                    0x29 => { /* set I = location for sprite representing value in Vx */ }
-                    0x33 => { /* The interpreter takes the decimal value of Vx, and places the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2. */
+                    0x07 => {
+                        self.ld_x_dt(x);
                     }
-                    0x55 => { /* store values in registers V0 through Vx in memory starting at I */
+                    0x0A => { /* wait for key press then store value of key in x */ }
+                    0x15 => {
+                        self.ld_dt_x(x);
                     }
-                    0x65 => { /* read values from memory starting at I into V0 through Vx */ }
+                    0x18 => {
+                        self.ld_st_x(x);
+                    }
+                    0x1E => {
+                        self.add_i(x);
+                    }
+                    0x29 => {
+                        self.ld_f_x(x);
+                    }
+                    0x33 => {
+                        self.ld_b_x(x, memory);
+                    }
+                    0x55 => {
+                        self.ld_0_x_i(x, memory);
+                    }
+                    0x65 => {
+                        self.ld_i_0_x(x, memory);
+                    }
                     _ => { /* invalid */ }
                 },
                 _ => { /* invalid */ }
@@ -338,6 +354,47 @@ impl CPU {
         }
         if !collision {
             self.registers[0xF] = 0;
+        }
+    }
+
+    fn ld_x_dt(&mut self, x: u8) {
+        self.registers[x as usize] = self.delay_timer;
+    }
+
+    fn ld_dt_x(&mut self, x: u8) {
+        self.delay_timer = self.registers[x as usize];
+    }
+
+    fn ld_st_x(&mut self, x: u8) {
+        self.sound_timer = self.registers[x as usize];
+    }
+
+    fn add_i(&mut self, x: u8) {
+        self.i += self.registers[x as usize] as usize;
+    }
+
+    fn ld_f_x(&mut self, x: u8) {
+        self.i = (self.registers[x as usize] * 5) as usize;
+    }
+
+    fn ld_b_x(&mut self, x: u8, memory: &mut [u8]) {
+        let mut arg = self.registers[x as usize];
+        for pl in 0..3 {
+            let mag = u8::pow(10, 2 - pl as u32);
+            memory[self.i + pl] = arg / mag;
+            arg %= mag;
+        }
+    }
+
+    fn ld_0_x_i(&mut self, x: u8, memory: &mut [u8]) {
+        for reg in 0..=x {
+            memory[self.i + reg as usize] = self.registers[reg as usize];
+        }
+    }
+
+    fn ld_i_0_x(&mut self, x: u8, memory: &mut [u8]) {
+        for reg in 0..=x {
+            self.registers[reg as usize] = memory[self.i + reg as usize];
         }
     }
 }
