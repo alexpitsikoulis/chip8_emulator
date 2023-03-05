@@ -31,7 +31,7 @@ impl CPU {
         &mut self,
         memory: &mut [u8; 4096],
         stack: &mut [u16; 16],
-        display: &mut [[u8; 256]; 128],
+        display: &mut [[u8; 128]; 64],
         sender: &Sender<Message>,
     ) {
         loop {
@@ -329,7 +329,7 @@ impl CPU {
         x: u8,
         y: u8,
         memory: &[u8; 0x1000],
-        display: &mut [[u8; 256]; 128],
+        display: &mut [[u8; 128]; 64],
         sender: &Sender<Message>,
     ) {
         let arg1 = self.registers[x as usize];
@@ -337,15 +337,20 @@ impl CPU {
         let bytes = &memory[self.i..self.i + n as usize];
         let collision = false;
         for c in 0..n {
-            let row = arg2 + c;
-            if !collision && row >= 128 {
+            let mut row = arg2 + c;
+            if row >= 64 {
                 self.registers[0xF] = 1;
+                row = row % 64
             }
             for pl in 0..8 {
-                let col = arg1 + pl;
-                let curr = &mut display[(row % 128) as usize][col as usize];
+                let mut col = arg1 + pl;
                 let bit = (bytes[c as usize] >> (7 - pl)) & 0x1;
-                if !collision && *curr & bit == 1 {
+                if col >= 128 {
+                    self.registers[0xF] = 1;
+                    col = col % 128
+                }
+                let curr = &mut display[row as usize][col as usize];
+                if *curr & bit == 1 {
                     self.registers[0xF] = 1;
                 }
                 *curr = *curr ^ bit;

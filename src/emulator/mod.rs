@@ -24,7 +24,7 @@ impl Emulator {
         self.memory.load_program(program);
     }
 
-    pub fn start(&mut self, display: &mut [[u8; 256]; 128], sender: &Sender<Message>) {
+    pub fn start(&mut self, display: &mut [[u8; 128]; 64], sender: &Sender<Message>) {
         self.cpu.run(
             &mut self.memory.memory,
             &mut self.memory.stack,

@@ -3,7 +3,7 @@ use emulator::Emulator;
 use relm4::{
     gtk::{
         traits::{BoxExt, GridExt, GtkWindowExt, WidgetExt},
-        Box, Grid, Label, Window,
+        Box, Grid, Window,
     },
     Component, ComponentParts, RelmApp, RelmIterChildrenExt, RelmWidgetExt,
 };
@@ -11,7 +11,7 @@ use relm4::{
 use std::{thread, time::Duration};
 
 pub struct Application {
-    display: [[u8; 256]; 128],
+    display: [[u8; 128]; 64],
 }
 
 #[derive(Debug)]
@@ -52,16 +52,37 @@ impl Component for Application {
         root: &Self::Root,
         sender: relm4::ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let print_leet: Vec<u8> = vec![
-            0xA0, 0x05, 0xD0, 0x15, 0x70, 0x05, 0xA0, 0x23, 0xD0, 0x15, 0x70, 0x05, 0xA0, 0x0F,
-            0xD0, 0x15, 0x70, 0x05, 0xA0, 0x28, 0xD0, 0x15,
-            // 0x00, 0xE0,
+        let program: Vec<u8> = vec![
+            // 0x63, 0x01, 0xF3, 0x29, 0xD0, 0x15, 0x70, 0x05, 0x63, 0x07, 0xF3, 0x29, 0xD0, 0x15,
+            // 0x70, 0x05, 0x63, 0x03, 0xF3, 0x29, 0xD0, 0x15, 0x70, 0x05, 0x63, 0x08, 0xF3, 0x29,
+            // 0xD0,
+            // 0x15,
+            0x70, 0x1, 0x70, 0x1, 0x70, 0x1, 0x63, 0x1, 0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5, 0x63,
+            0x8, 0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5, 0x63, 0x4, 0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5,
+            0x63, 0x7, 0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5, 0x70, 0x1, 0x63, 0xa, 0xf3, 0x29, 0xd0,
+            0x15, 0x70, 0x5, 0x63, 0xf, 0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5, 0x63, 0xb, 0xf3, 0x29,
+            0xd0, 0x15, 0x70, 0x5, 0x63, 0xb, 0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5, 0x70, 0x1, 0x63,
+            0xe, 0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5, 0x70, 0x1, 0x63, 0xd, 0xf3, 0x29, 0xd0, 0x15,
+            0x70, 0x5, 0x63, 0xe, 0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5, 0x63, 0xa, 0xf3, 0x29, 0xd0,
+            0x15, 0x70, 0x5, 0x63, 0xd, 0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5, 0x70, 0x1, 0x63, 0xb,
+            0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5, 0x63, 0xe, 0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5, 0x63,
+            0xe, 0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5, 0x63, 0xf, 0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5,
+            0x70, 0x1, 0x63, 0xf, 0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5, 0x63, 0xe, 0xf3, 0x29, 0xd0,
+            0x15, 0x70, 0x5, 0x63, 0xe, 0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5, 0x63, 0xb, 0xf3, 0x29,
+            0xd0, 0x15, 0x70, 0x5, 0x70, 0x1, 0x63, 0xd, 0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5, 0x63,
+            0xe, 0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5, 0x63, 0xe, 0xf3, 0x29, 0xd0, 0x15, 0x71, 0x6,
+            0x60, 0x0, 0x63, 0xb, 0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5, 0x70, 0x1, 0x63, 0xb, 0xf3,
+            0x29, 0xd0, 0x15, 0x70, 0x5, 0x63, 0xe, 0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5, 0x63, 0xb,
+            0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5, 0x70, 0x1, 0x63, 0xb, 0xf3, 0x29, 0xd0, 0x15, 0x70,
+            0x5, 0x63, 0xe, 0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5, 0x63, 0xe, 0xf3, 0x29, 0xd0, 0x15,
+            0x70, 0x5, 0x63, 0xe, 0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5, 0x63, 0xb, 0xf3, 0x29, 0xd0,
+            0x15, 0x70, 0x5, 0x63, 0xa, 0xf3, 0x29, 0xd0, 0x15, 0x70, 0x5,
         ];
 
         let mut emulator = Emulator::new();
-        emulator.load_program(print_leet);
+        emulator.load_program(program);
         let mut model = Self {
-            display: [[0; 256]; 128],
+            display: [[0; 128]; 64],
         };
 
         thread::spawn(move || {
@@ -69,45 +90,29 @@ impl Component for Application {
             (&mut emulator).start(&mut model.display, &sender.input_sender());
         });
 
-        let vBox = Box::new(relm4::gtk::Orientation::Horizontal, 0);
-        vBox.set_baseline_position(relm4::gtk::BaselinePosition::Top);
-        vBox.set_width_request(1480);
-        vBox.set_height_request(840);
-        vBox.set_margin_all(0);
-        vBox.inline_css("background-color: #F4E6D1; border_radius: 50px");
+        let frame = Box::new(relm4::gtk::Orientation::Horizontal, 0);
+        frame.set_baseline_position(relm4::gtk::BaselinePosition::Top);
+        frame.set_width_request(1480);
+        frame.set_height_request(840);
+        frame.set_margin_all(0);
+        frame.inline_css("background-color: #F4E6D1; border-radius: 50px");
 
         let screen = Grid::builder()
-            .width_request(1380)
-            .height_request(740)
-            .margin_top(1)
-            .margin_bottom(1)
-            .margin_start(1)
-            .margin_end(1)
+            .width_request(1280)
+            .height_request(640)
             .build();
         screen.set_margin_all(100);
-        screen.inline_css("background-color: black; border-radius: 5px");
+        screen.inline_css("background-color: black; border-radius: 5px; padding: 5px");
 
-        for y in 0..128 {
-            for x in 0..256 {
-                let pixel = Box::builder().width_request(5).height_request(5).build();
-                if x == 0 && y == 0 {
-                    pixel.inline_css("border-radius: 5px 0 0 0");
-                }
-                if x == 0 && y == 127 {
-                    pixel.inline_css("border-radius: 0 0 0 5px");
-                }
-                if x == 255 && y == 0 {
-                    pixel.inline_css("border-radius: 0 5px 0 0");
-                }
-                if x == 255 && y == 127 {
-                    pixel.inline_css("border-radius: 0 0 5px 0");
-                }
-                screen.attach(&pixel, x * 5, y * 5, 5, 5);
+        for y in 0..64 {
+            for x in 0..128 {
+                let pixel = Box::builder().width_request(10).height_request(10).build();
+                screen.attach(&pixel, x * 10, y * 10, 10, 10);
             }
         }
 
-        vBox.append(&screen);
-        root.set_child(Some(&vBox));
+        frame.append(&screen);
+        root.set_child(Some(&frame));
 
         let widgets = Self::Widgets { screen };
         return ComponentParts { model, widgets };
@@ -118,11 +123,11 @@ impl Component for Application {
         widgets: &mut Self::Widgets,
         message: Self::Input,
         _sender: relm4::ComponentSender<Self>,
-        root: &Self::Root,
+        _root: &Self::Root,
     ) {
         match message {
             Self::Input::Clr => {
-                self.display = [[0; 256]; 128];
+                self.display = [[0; 128]; 64];
                 widgets
                     .screen
                     .iter_children()
@@ -130,11 +135,14 @@ impl Component for Application {
             }
             Self::Input::Drw(x, y, bit) => {
                 self.display[x as usize][y as usize] = bit;
-                let pixel = widgets.screen.child_at(y as i32 * 5, x as i32 * 5).unwrap();
+                let pixel = widgets
+                    .screen
+                    .child_at(y as i32 * 10, x as i32 * 10)
+                    .unwrap();
                 if bit == 1 {
                     pixel.inline_css("background-color: white");
                 } else {
-                    pixel.inline_css("background-color: #black");
+                    pixel.inline_css("background-color: black");
                 }
             }
             Self::Input::ShutDown => {}
