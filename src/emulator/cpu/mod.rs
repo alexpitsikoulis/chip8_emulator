@@ -1,10 +1,11 @@
-use relm4::Sender;
+mod test;
+
+use crate::Message;
 use std::{
+    sync::mpsc::Receiver,
     thread,
     time::{Duration, SystemTime},
 };
-
-use crate::Message;
 
 #[derive(Clone, Copy, Debug)]
 pub struct CPU {
@@ -32,7 +33,8 @@ impl CPU {
         memory: &mut [u8; 4096],
         stack: &mut [u16; 16],
         display: &mut [[u8; 128]; 64],
-        sender: &Sender<Message>,
+        keyboard_receiver: &Receiver<u16>,
+        sender: &relm4::Sender<Message>,
     ) {
         loop {
             let op_byte1 = memory[self.program_counter] as u16;
@@ -53,7 +55,7 @@ impl CPU {
                     return;
                 }
                 0x00E0 => {
-                    Self::clr(sender);
+                    Self::clr(display, sender);
                 }
                 0x00EE => {
                     self.ret(stack);
@@ -121,6 +123,7 @@ impl CPU {
                 0xC000..=0xCFFF => {
                     self.rnd(x, kk);
                 }
+                // 0xD000..=0xDFFF => self.drw(n, x, y, memory, display, sender),
                 0xD000..=0xDFFF => self.drw(n, x, y, memory, display, sender),
                 0xE09E..=0xEFA1 => {
                     match kk {
@@ -133,7 +136,9 @@ impl CPU {
                     0x07 => {
                         self.ld_x_dt(x);
                     }
-                    0x0A => { /* wait for key press then store value of key in x */ }
+                    0x0A => {
+                        self.ld_k_x(x, keyboard_receiver);
+                    }
                     0x15 => {
                         self.ld_dt_x(x);
                     }
@@ -162,9 +167,9 @@ impl CPU {
         }
     }
 
-    fn clr(sender: &Sender<Message>) {
+    fn clr(display: &mut [[u8; 128]; 64], sender: &relm4::Sender<Message>) {
         thread::sleep(Duration::from_secs(1));
-        // sender.send(Message::Clr).expect("failed to clear display");
+        *display = [[0; 128]; 64];
         sender.emit(Message::Clr);
     }
 
@@ -210,7 +215,13 @@ impl CPU {
     }
 
     fn add(&mut self, x: u8, kk: u8) {
-        self.registers[x as usize] += kk;
+        let (result, overflow) = self.registers[x as usize].overflowing_add(kk);
+        if overflow {
+            self.registers[0xF] = 1;
+        } else {
+            self.registers[0xF] = 0;
+        }
+        self.registers[x as usize] = result;
     }
 
     fn or_xy(&mut self, x: u8, y: u8) {
@@ -256,9 +267,9 @@ impl CPU {
         self.registers[x as usize] = val;
 
         if underflow {
-            self.registers[0xF] = 0;
-        } else {
             self.registers[0xF] = 1;
+        } else {
+            self.registers[0xF] = 0;
         }
     }
 
@@ -330,31 +341,31 @@ impl CPU {
         y: u8,
         memory: &[u8; 0x1000],
         display: &mut [[u8; 128]; 64],
-        sender: &Sender<Message>,
+        sender: &relm4::Sender<Message>,
     ) {
         let arg1 = self.registers[x as usize];
         let arg2 = self.registers[y as usize];
         let bytes = &memory[self.i..self.i + n as usize];
         let collision = false;
         for c in 0..n {
-            let mut row = arg2 + c;
+            let (mut row, _) = arg2.overflowing_add(c);
             if row >= 64 {
                 self.registers[0xF] = 1;
-                row = row % 64
+                row = row % 64;
             }
             for pl in 0..8 {
-                let mut col = arg1 + pl;
-                let bit = (bytes[c as usize] >> (7 - pl)) & 0x1;
+                let (mut col, _) = arg1.overflowing_add(pl);
                 if col >= 128 {
                     self.registers[0xF] = 1;
                     col = col % 128
                 }
+                let bit = (bytes[c as usize] >> (7 - pl)) & 0x1;
                 let curr = &mut display[row as usize][col as usize];
                 if *curr & bit == 1 {
                     self.registers[0xF] = 1;
                 }
                 *curr = *curr ^ bit;
-                sender.emit(Message::Drw(row, col, bit));
+                sender.emit(Message::Drw(row, col, *curr));
             }
         }
         if !collision {
@@ -366,6 +377,18 @@ impl CPU {
         self.registers[x as usize] = self.delay_timer;
     }
 
+    fn ld_k_x(&mut self, x: u8, keyboard_receiver: &Receiver<u16>) {
+        let keys = keyboard_receiver.recv().unwrap();
+        if keys != 0 {
+            for val in 0..16 {
+                if keys >> (15 - val) & 1 == 1 {
+                    self.registers[x as usize] = val;
+                    break;
+                }
+            }
+        }
+    }
+
     fn ld_dt_x(&mut self, x: u8) {
         self.delay_timer = self.registers[x as usize];
     }
@@ -375,7 +398,13 @@ impl CPU {
     }
 
     fn add_i(&mut self, x: u8) {
-        self.i += self.registers[x as usize] as usize;
+        let (result, overflow) = self.i.overflowing_add(self.registers[x as usize] as usize);
+        if overflow {
+            self.registers[0xF] = 1;
+        } else {
+            self.registers[0xF] = 0;
+        }
+        self.i = result;
     }
 
     fn ld_f_x(&mut self, x: u8) {
